@@ -13,7 +13,9 @@ make run | xxd
 ```
 
 The output would be something like this:
+
 ![Output example](assets/screenshot.png)
 
 Licensed under AGPL
+
 Libs used: zlib
