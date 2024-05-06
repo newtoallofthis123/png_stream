@@ -1,7 +1,7 @@
 #include "png.h"
+#include <fstream>
 #include <iostream>
 #include <sstream>
-// #include <fstream>
 
 using namespace std;
 
@@ -14,14 +14,12 @@ int main() {
 
   p.render(strstream);
 
-  auto str = strstream.str();
-  cout << str;
+  cout << strstream.str();
 
   // Uncomment this to write to a file called hello.png
-  // auto bin = std::vector<uint8_t>(str.begin(), str.end());
-  // std::ofstream file("hello.png", std::ios::out | std::ios::binary);
-  // file.write(reinterpret_cast<const char *>(bin.data()), bin.size());
-  // file.close();
+  std::ofstream file("hello.png", std::ios::out | std::ios::binary);
+  file << strstream.rdbuf();
+  file.close();
 
   return 0;
 }

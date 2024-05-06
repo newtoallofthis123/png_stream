@@ -1,4 +1,5 @@
 #include "stream.h"
+#include <array>
 #include <cstdint>
 #include <sstream>
 #include <vector>
@@ -8,25 +9,26 @@
 #define PNG_H
 
 // The Png seems to be made up of three components that all need
-// appropriate start tags:
-// 1. IHDR - Image Header (Contains information about the head)
-// 2. IDAT - Image Data (Containers the actual image data)
-// 3. IEND - Image End (Ends the image)
+//  appropriate start tags:
+//  1. IHDR - Image Header (Contains information about the head)
+//  2. IDAT - Image Data (Containers the actual image data)
+//  3. IEND - Image End (Ends the image)
 //
-// So, these can be neatly labled as `RenderHead`, `RenderCorpus`, `RenderTail`
+//  So, these can be neatly labled as `RenderHead`, `RenderCorpus`, `RenderTail`
 //
-// INFO: Only supports a single RGB color for now
+//  INFO: Only supports a single RGB color for now
 class PngStream : Stream {
 public:
   // Make a png with the width and the height
-  PngStream(int width, int height) : width(width), height(height) {
-    content.resize(width * height * 3);
-  }
+  PngStream(int width, int height) : width(width), height(height) {}
   uint width;
   uint height;
   // To Actually hold the pixels
   // the content would be a vector of binary uint_8 rather than a string
-  std::vector<uint8_t> content;
+  std::vector<unsigned char> content = {
+      0,   0,   0,   0,  // Chunk length
+      'I', 'D', 'A', 'T' // Chunk type
+  };
 
   // Writes some simple image data to the pixel_data
   // Images are stoed as a continous array of 3 elements: RGB
@@ -39,11 +41,12 @@ public:
   //
   // TODO: Make it actually and customizable
   void generate_data(uint8_t red, uint8_t blue, uint8_t green) {
-    for (uint32_t y = 0; y < height; ++y) {
-      for (uint32_t x = 0; x < width; ++x) {
-        this->content[(y * width + x) * 3] = red;
-        this->content[(y * width + x) * 3 + 1] = green;
-        this->content[(y * width + x) * 3 + 2] = blue;
+    for (int y = 0; y < height; ++y) {
+      content.push_back(0); // Filter type
+      for (int x = 0; x < width; ++x) {
+        content.push_back(red);
+        content.push_back(green);
+        content.push_back(blue);
       }
     }
   }
@@ -51,62 +54,62 @@ public:
   // Makes it actually a recognizable PNG format
   // ie writes out PNG in binary ascii
   void write_signature(std::stringstream &stream) {
-    stream.write(reinterpret_cast<const char *>(PNG_SIGNATURE),
-                 sizeof(PNG_SIGNATURE));
+    for (auto i : PNG_SIGNATURE) {
+      stream << i;
+    }
   }
 
   void RenderHead(std::stringstream &stream) {
-    // This is kinda like the before function, but it seemed to be
-    // appropriate in the head
-    // FIXME: This should be put in the render function directly
-    // since we would not want to call this every time once we have a good
-    // recursive mechanism in place
-    this->write_signature(stream);
+    write_signature(stream);
 
-    const char chunk_type[] = "IHDR";
-    // I don't know why we write 8,2,0,0,0 but it seems to be important
-    // for the PNG specification
-    const uint32_t head_data[] = {width, height, 8, 2, 0, 0, 0};
-    const uint32_t crc =
-        crc32(0, reinterpret_cast<const Bytef *>(chunk_type), 4);
-    const uint32_t chunk_length = 13;
+    std::vector<unsigned char> ihdr = {0, 0, 0, 13, 'I', 'H', 'D', 'R', 0, 0, 0,
+                                       0, 0, 0, 0,  0,   8,   6,   0,   0, 0};
 
-    stream.write(reinterpret_cast<const char *>(&chunk_length),
-                 sizeof(uint32_t));
-    stream.write(chunk_type, 4);
-    stream.write(reinterpret_cast<const char *>(head_data), sizeof(head_data));
-    stream.write(reinterpret_cast<const char *>(&crc), sizeof(uint32_t));
+    ihdr[8] = (width >> 24) & 0xFF;
+    ihdr[9] = (width >> 16) & 0xFF;
+    ihdr[10] = (width >> 8) & 0xFF;
+    ihdr[11] = width & 0xFF;
+    ihdr[12] = (height >> 24) & 0xFF;
+    ihdr[13] = (height >> 16) & 0xFF;
+    ihdr[14] = (height >> 8) & 0xFF;
+    ihdr[15] = height & 0xFF;
+
+    add_crc(ihdr);
+
+    for (auto i : ihdr) {
+      stream << i;
+    }
   }
 
   void RenderCorpus(std::stringstream &stream) {
     // NOTE: Well for now, this image doesn't really have a recursive part,
     // but if it were to, it would be here
 
-    // This is the "content" of the image
-    const uint32_t chunk_length = content.size();
+    int dataSize = width * height * 3;
+    content[0] = (dataSize >> 24) & 0xFF;
+    content[1] = (dataSize >> 16) & 0xFF;
+    content[2] = (dataSize >> 8) & 0xFF;
+    content[3] = dataSize & 0xFF;
 
-    const char chunk_type[] = "IDAT";
-    const uint32_t crc =
-        crc32(0, reinterpret_cast<const Bytef *>(chunk_type), 4);
+    add_crc(content);
 
-    stream.write(reinterpret_cast<const char *>(&chunk_length),
-                 sizeof(uint32_t));
-    stream.write(chunk_type, 4);
-    stream.write(reinterpret_cast<const char *>(content.data()),
-                 content.size());
-    stream.write(reinterpret_cast<const char *>(&crc), sizeof(uint32_t));
+    for (auto i : content) {
+      stream << i;
+    }
   }
 
   void RenderTail(std::stringstream &stream) {
-    const uint32_t chunk_length = 0;
-    const char chunk_type[] = "IEND";
-    const uint32_t crc =
-        crc32(0, reinterpret_cast<const Bytef *>(chunk_type), 4);
+    std::vector<unsigned char> iend = {
+        0,    0,    0,    0,   // Chunk length
+        'I',  'E',  'N',  'D', // Chunk type
+        0x00, 0x00, 0x00, 0x00,
+    };
 
-    stream.write(reinterpret_cast<const char *>(&chunk_length),
-                 sizeof(uint32_t));
-    stream.write(chunk_type, 4);
-    stream.write(reinterpret_cast<const char *>(&crc), sizeof(uint32_t));
+    add_crc(iend);
+
+    for (auto i : iend) {
+      stream << i;
+    }
   }
 
   void render(std::stringstream &stream) {
@@ -120,6 +123,21 @@ private:
   // literally spells out PNG in binary lol
   // Taken from http://www.libpng.org/pub/png/spec/1.2/PNG-Structure.html
   const uint8_t PNG_SIGNATURE[8] = {137, 80, 78, 71, 13, 10, 26, 10};
+
+  uint32_t big_endian_convert(uint32_t value) {
+    return ((value & 0xFF000000) >> 24) | ((value & 0x00FF0000) >> 8) |
+           ((value & 0x0000FF00) << 8) | ((value & 0x000000FF) << 24);
+  }
+
+  void add_crc(std::vector<unsigned char> &chunk) {
+    unsigned long crc = crc32(0L, Z_NULL, 0);
+    crc = crc32(crc, &chunk[4],
+                chunk.size() - 8); // Exclude length and chunk type
+    chunk[chunk.size() - 4] = (crc >> 24) & 0xFF;
+    chunk[chunk.size() - 3] = (crc >> 16) & 0xFF;
+    chunk[chunk.size() - 2] = (crc >> 8) & 0xFF;
+    chunk[chunk.size() - 1] = crc & 0xFF;
+  }
 };
 
 #endif
