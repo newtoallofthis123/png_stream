@@ -14,7 +14,7 @@ make run | xxd
 
 The output would be something like this:
 
-![Output example](assets/screenshot.png)
+![Output example](assets/screenshot_updated.png)
 
 Licensed under AGPL
 
