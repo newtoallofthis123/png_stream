@@ -6,7 +6,7 @@
 #include <vector>
 
 #ifndef PNGSTREAM_H
-#define PNGSTREAN_H
+#define PNGSTREAM_H
 
 // To Represent the RGB colors
 struct RGB {
