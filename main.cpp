@@ -8,7 +8,7 @@ using namespace std;
 int main() {
   PngStream p(10, 10);
 
-  p.generate_data(255, 15, 2);
+  p.generate_data(255, 0, 0);
 
   stringstream strstream;
 

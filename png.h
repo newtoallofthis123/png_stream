@@ -1,5 +1,4 @@
 #include "stream.h"
-#include <array>
 #include <cstdint>
 #include <sstream>
 #include <vector>
@@ -119,20 +118,17 @@ public:
   }
 
 private:
-  // This is how the string is identified as a png:
-  // literally spells out PNG in binary lol
-  // Taken from http://www.libpng.org/pub/png/spec/1.2/PNG-Structure.html
   const uint8_t PNG_SIGNATURE[8] = {137, 80, 78, 71, 13, 10, 26, 10};
 
+  // Not used anymore
   uint32_t big_endian_convert(uint32_t value) {
     return ((value & 0xFF000000) >> 24) | ((value & 0x00FF0000) >> 8) |
            ((value & 0x0000FF00) << 8) | ((value & 0x000000FF) << 24);
   }
 
   void add_crc(std::vector<unsigned char> &chunk) {
-    unsigned long crc = crc32(0L, Z_NULL, 0);
-    crc = crc32(crc, &chunk[4],
-                chunk.size() - 8); // Exclude length and chunk type
+    unsigned long crc = crc32(0L, 0, 0);
+    crc = crc32(crc, &chunk[4], chunk.size() - 8);
     chunk[chunk.size() - 4] = (crc >> 24) & 0xFF;
     chunk[chunk.size() - 3] = (crc >> 16) & 0xFF;
     chunk[chunk.size() - 2] = (crc >> 8) & 0xFF;
