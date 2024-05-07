@@ -1,25 +1,21 @@
-#include "png.h"
+#include "pngstream.h"
 #include <fstream>
-#include <iostream>
 #include <sstream>
 
-using namespace std;
-
 int main() {
-  PngStream p(10, 10);
+  PngStream p(RGB{220, 180, 101});
 
-  p.generate_data(255, 0, 0);
+  std::stringstream stream;
 
-  stringstream strstream;
+  p.generate_bg();
 
-  p.render(strstream);
+  p.render(stream);
 
-  cout << strstream.str();
+  std::cout << stream.str() << std::endl;
 
-  // Uncomment this to write to a file called hello.png
-  std::ofstream file("hello.png", std::ios::out | std::ios::binary);
-  file << strstream.rdbuf();
-  file.close();
+  std::ofstream outfile("hello.png", std::ios::binary);
+  outfile << stream.str();
+  outfile.close();
 
-  return 0;
+  // std::cout << "PNG data written to hello.png" << std::endl;
 }
