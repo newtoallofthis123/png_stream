@@ -3,7 +3,7 @@
 #include <sstream>
 
 int main() {
-  PngStream p(RGB{220, 180, 101});
+  PngStream p(RGB{220, 180, 101}, 100, 100);
 
   std::stringstream stream;
 
