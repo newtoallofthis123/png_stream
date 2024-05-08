@@ -16,11 +16,11 @@ typedef unsigned long long int ProcUnit;
 
 class Stream {
 public:
-  template <typename StreamT> void render(NativeStream<StreamT> &stream);
-  void render(std::ostream &stream);
-  template <typename StreamT> void RenderHead(NativeStream<StreamT> &stream);
-  template <typename StreamT> void RenderCorpus(NativeStream<StreamT> &stream);
-  template <typename StreamT> void RenderTail(NativeStream<StreamT> &stream);
+  template <typename StreamT> void stream(NativeStream<StreamT> &stream);
+  void stream(std::ostream &stream);
+  template <typename StreamT> void StreamHead(NativeStream<StreamT> &stream);
+  template <typename StreamT> void StreamCorpus(NativeStream<StreamT> &stream);
+  template <typename StreamT> void StreamTail(NativeStream<StreamT> &stream);
 };
 
 #endif

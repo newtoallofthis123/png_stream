@@ -2,20 +2,20 @@
 #include <fstream>
 #include <sstream>
 
+using namespace APPROACH_RENDER_PNG;
+
 int main() {
-  PngStream p(RGB{220, 180, 101}, 100, 100);
+  PNG p(RGB{220, 180, 101}, 800, 600);
 
   std::stringstream stream;
 
   p.generate_bg();
 
-  p.render(stream);
+  auto output = p.render(stream);
 
-  std::cout << stream.str() << std::endl;
+  std::cout << output << std::endl;
 
   std::ofstream outfile("hello.png", std::ios::binary);
-  outfile << stream.str();
+  outfile << output;
   outfile.close();
-
-  // std::cout << "PNG data written to hello.png" << std::endl;
 }

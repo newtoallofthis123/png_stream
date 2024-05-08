@@ -3,11 +3,10 @@
 #include <png.h>
 #include <pngconf.h>
 #include <sstream>
+#include <string>
 #include <vector>
 
-#ifndef PNGSTREAM_H
-#define PNGSTREAM_H
-
+namespace APPROACH_RENDER_PNG {
 // To Represent the RGB colors
 struct RGB {
   uint8_t red;
@@ -17,7 +16,7 @@ struct RGB {
 
 // The needed options for the PNG Generation
 // use default_png_options() for sensible defaults
-struct PngStream_Options {
+struct Options {
   RGB colors;
   unsigned int width;
   unsigned int height;
@@ -28,25 +27,24 @@ struct PngStream_Options {
   uint8_t interlace_method;
 };
 
-class PngStream : Stream {
+class PNG : Stream {
 public:
-  PngStream(PngStream_Options ihdr) : options(ihdr) { setup(); }
-  PngStream(uint8_t red, uint8_t green, uint8_t blue, unsigned int width,
-            unsigned int height)
+  PNG(Options ihdr) : options(ihdr) { setup(); }
+  PNG(uint8_t red, uint8_t green, uint8_t blue, unsigned int width,
+      unsigned int height)
       : options(default_png_options(RGB{red, green, blue}, width, height)) {
     setup();
   }
-  PngStream(RGB rgb) : options(default_png_options(rgb, 800, 600)) { setup(); }
-  PngStream(RGB rgb, unsigned int width, unsigned int height)
+  PNG(RGB rgb) : options(default_png_options(rgb, 800, 600)) { setup(); }
+  PNG(RGB rgb, unsigned int width, unsigned int height)
       : options(default_png_options(rgb, width, height)) {
     setup();
   }
 
   png_structp png_ptr;
-  png_bytep png_row;
   std::vector<std::vector<png_bytep>> content;
 
-  void RenderHead(std::stringstream &stream) {
+  void StreamHead(std::stringstream &stream) {
     // After this step, the png itself becomes our stream and all the activities
     // done on the png would be automatically written to the stream
     png_set_write_fn(
@@ -85,7 +83,7 @@ public:
     content.push_back(data);
   }
 
-  void RenderCorpus(std::stringstream &stream) {
+  void StreamCorpus(std::stringstream &stream) {
     for (auto rows : content) {
       for (auto row : rows) {
         png_write_row(png_ptr, row);
@@ -93,18 +91,24 @@ public:
     }
   }
 
-  void RenderTail(std::stringstream &stream) { png_write_end(png_ptr, NULL); }
+  void StreamTail(std::stringstream &stream) { png_write_end(png_ptr, NULL); }
 
-  void render(std::stringstream &stream) {
-    this->RenderHead(stream);
-    this->RenderCorpus(stream);
-    this->RenderTail(stream);
+  void stream(std::stringstream &stream) {
+    this->StreamHead(stream);
+    this->StreamCorpus(stream);
+    this->StreamTail(stream);
   }
 
-  ~PngStream() { png_destroy_write_struct(&png_ptr, &png_info); }
+  std::string render(std::stringstream &str_stream) {
+    stream(str_stream);
+
+    return str_stream.str();
+  }
+
+  ~PNG() { png_destroy_write_struct(&png_ptr, &png_info); }
 
 private:
-  PngStream_Options options;
+  Options options;
   png_infop png_info;
 
   void setup() {
@@ -122,17 +126,16 @@ private:
     }
   }
 
-  PngStream_Options default_png_options(RGB rgb, unsigned int width,
-                                        unsigned int height) {
-    return PngStream_Options{rgb,
-                             width,
-                             height,
-                             8,
-                             PNG_COLOR_TYPE_RGB,
-                             PNG_INTERLACE_NONE,
-                             PNG_COMPRESSION_TYPE_DEFAULT,
-                             PNG_FILTER_TYPE_DEFAULT};
+  Options default_png_options(RGB rgb, unsigned int width,
+                              unsigned int height) {
+    return Options{rgb,
+                   width,
+                   height,
+                   8,
+                   PNG_COLOR_TYPE_RGB,
+                   PNG_INTERLACE_NONE,
+                   PNG_COMPRESSION_TYPE_DEFAULT,
+                   PNG_FILTER_TYPE_DEFAULT};
   }
 };
-
-#endif
+} // namespace APPROACH_RENDER_PNG
