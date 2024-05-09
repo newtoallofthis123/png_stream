@@ -1,5 +1,6 @@
 #include <cmath>
 #include <cstdint>
+#include <cstdlib>
 #include <type_traits>
 
 enum Colorspace {
@@ -142,6 +143,63 @@ struct Converter {
 
     return hsv;
   }
+
+  RGB hsv_rgb(HSV hsv) {
+    RGB rgb;
+
+    float h, s, v, r, g, b;
+
+    h = hsv.H;
+    s = hsv.S;
+    v = hsv.V;
+
+    h /= 360.0f;
+    s /= 100.0f;
+    v /= 100.0f;
+
+    if (s == 0) {
+      r = g = b = v;
+    } else {
+      h *= 6;
+      auto i = std::floor(h);
+      float f = h - i;
+      auto p = v * (1 - s);
+      auto q = v * (1 - s * f);
+      auto t = v * (1 - s * (1 - f));
+
+      if (i == 0) {
+        r = v;
+        g = t;
+        b = p;
+      } else if (i == 1) {
+        r = q;
+        g = v;
+        b = p;
+      } else if (i == 2) {
+        r = p;
+        g = v;
+        b = t;
+      } else if (i == 3) {
+        r = p;
+        g = q;
+        b = v;
+      } else if (i == 4) {
+        r = t;
+        g = p;
+        b = v;
+      } else {
+        r = v;
+        g = p;
+        b = q;
+      }
+    }
+
+    rgb.rgb16.R = static_cast<int>(r * 255);
+    rgb.rgb16.G = static_cast<int>(g * 255);
+    rgb.rgb16.B = static_cast<int>(b * 255);
+
+    return rgb;
+  }
 };
 
 template <typename srcType, typename destType>
@@ -203,6 +261,29 @@ void convert_color_space(Colorspace srcSpace, srcType &src,
     }
     break;
   case HSV_SPACE:
+    switch (destSpace) {
+    case RGB_SPACE:
+      if constexpr (std::is_same_v<destType, RGB> &&
+                    std::is_same_v<srcType, HSV>) {
+        rgb = conv.hsv_rgb(src);
+        dest.rgb16.R = rgb.rgb16.R;
+        dest.rgb16.G = rgb.rgb16.G;
+        dest.rgb16.B = rgb.rgb16.B;
+      }
+      break;
+    case HSV_SPACE:
+      break;
+    case XYZ_SPACE:
+      if constexpr (std::is_same_v<destType, XYZ> &&
+                    std::is_same_v<srcType, HSV>) {
+        rgb = conv.hsv_rgb(src);
+        xyz = conv.rgb_to_xyz(rgb);
+        dest.X = xyz.X;
+        dest.Y = xyz.Y;
+        dest.Z = xyz.Z;
+      }
+      break;
+    }
     break;
   }
 }
