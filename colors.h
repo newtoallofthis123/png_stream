@@ -6,6 +6,8 @@
 #include <iostream>
 #include <string>
 
+namespace APPROACH_RENDER_PNG {
+
 enum ColorspaceType {
   RGB_SPACE,
   HSV_SPACE,
@@ -104,7 +106,7 @@ inline void linear_rgb(float &r, float &g, float &b) {
 
 struct Converter8 {
 
-  std::string rgb_hex(RGB8 rgb) {
+  static std::string rgb_hex(RGB8 rgb) {
     int r, g, b;
     r = static_cast<int>(rgb.R);
     g = static_cast<int>(rgb.G);
@@ -167,14 +169,19 @@ struct Converter8 {
     if (delta == 0) {
       hsv.H = 0;
     } else if (cmax == r) {
-      if (g > b)
-        hsv.H = 60.0f * (std::fmod(((g - b) / delta), 6.0f));
-      else
-        hsv.H = 60.0f * (std::fmod(((b - g) / delta), 6.0f));
+      // if (g > b)
+      hsv.H = 60.0f * (std::fmod(((g - b) / delta), 6.0f));
+      // else
+      // hsv.H = 60.0f * (std::fmod(((b - g) / delta), 6.0f));
     } else if (cmax == g) {
       hsv.H = 60.0f * (((b - r) / delta) + 2);
     } else {
       hsv.H = 60.0f * (((r - g) / delta) + 4);
+    }
+
+    if (hsv.H < 0) {
+      std::cout << hsv.H;
+      hsv.H = 360 + hsv.H;
     }
 
     if (cmax == 0) {
@@ -211,31 +218,36 @@ struct Converter8 {
       auto q = v * (1 - s * f);
       auto t = v * (1 - s * (1 - f));
 
-      switch (int(i)) {
-      case 0:
-        r = v, g = t, b = p;
-        break;
-      case 1:
-        r = q, g = v, b = p;
-        break;
-      case 2:
-        r = p, g = v, b = t;
-        break;
-      case 3:
-        r = p, g = q, b = v;
-        break;
-      case 4:
-        r = t, g = p, b = v;
-        break;
-      case 5:
-        r = v, g = p, b = q;
-        break;
+      if (i == 0) {
+        r = v;
+        g = t;
+        b = p;
+      } else if (i == 1) {
+        r = q;
+        g = v;
+        b = p;
+      } else if (i == 2) {
+        r = p;
+        g = v;
+        b = t;
+      } else if (i == 3) {
+        r = p;
+        g = q;
+        b = v;
+      } else if (i == 4) {
+        r = t;
+        g = p;
+        b = v;
+      } else {
+        r = v;
+        g = p;
+        b = q;
       }
     }
 
     rgb.R = static_cast<int>(r * 255);
-    rgb.G = static_cast<int>(g * 255);
-    rgb.B = static_cast<int>(b * 255);
+    rgb.G = static_cast<int>(b * 255);
+    rgb.B = static_cast<int>(g * 255);
 
     return rgb;
   }
@@ -386,25 +398,30 @@ struct Converter16 {
       auto q = v * (1 - s * f);
       auto t = v * (1 - s * (1 - f));
 
-      switch (int(i)) {
-      case 0:
-        r = v, g = t, b = p;
-        break;
-      case 1:
-        r = q, g = v, b = p;
-        break;
-      case 2:
-        r = p, g = v, b = t;
-        break;
-      case 3:
-        r = p, g = q, b = v;
-        break;
-      case 4:
-        r = t, g = p, b = v;
-        break;
-      case 5:
-        r = v, g = p, b = q;
-        break;
+      if (i == 0) {
+        r = v;
+        g = t;
+        b = p;
+      } else if (i == 1) {
+        r = q;
+        g = v;
+        b = p;
+      } else if (i == 2) {
+        r = p;
+        g = v;
+        b = t;
+      } else if (i == 3) {
+        r = p;
+        g = q;
+        b = v;
+      } else if (i == 4) {
+        r = t;
+        g = p;
+        b = v;
+      } else {
+        r = v;
+        g = p;
+        b = q;
       }
     }
 
@@ -466,3 +483,18 @@ inline Colorspace16 convert_color_space(ColorspaceType srcSpace,
   }
   return dest;
 };
+
+struct Debug {
+  static void print_hsv(HSV8 &hsv) {
+    std::cout << "HSV: (" << hsv.H << ", " << hsv.S << "%, " << hsv.V << "%)";
+  }
+
+  static void print_rgb(RGB8 &rgb) {
+    std::cout << "RGB: (" << +rgb.R << ", " << +rgb.G << ", " << +rgb.B << ")";
+  }
+
+  static void print_xyz(XYZ8 &xyz) {
+    std::cout << "XYZ: (" << xyz.X << ", " << xyz.Y << ", " << xyz.Z << ")";
+  }
+};
+} // namespace APPROACH_RENDER_PNG

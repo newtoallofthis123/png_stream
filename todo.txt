@@ -1,1 +1,2 @@
 2024-05-11 Check this out: https://github.com/libvips/libvips/blob/master/libvips/colour/sRGB2HSV.c
+2024-05-11 (A) Fix the RGB to HSV Conversion Anomalies
