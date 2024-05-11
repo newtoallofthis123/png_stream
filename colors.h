@@ -1,6 +1,10 @@
 #include <cmath>
 #include <cstdint>
 #include <cstdlib>
+#include <iomanip>
+#include <ios>
+#include <iostream>
+#include <string>
 #include <type_traits>
 
 enum Colorspace {
@@ -9,25 +13,30 @@ enum Colorspace {
   XYZ_SPACE,
 };
 
-typedef union {
-  struct {
-    uint8_t R;
-    uint8_t G;
-    uint8_t B;
-  } rgb8;
+typedef enum { RGB8, RGB16, RGB32 } RGB_TYPE;
 
-  struct {
-    uint16_t R;
-    uint16_t G;
-    uint16_t B;
-  } rgb16;
+typedef struct {
+  RGB_TYPE type;
+  union {
 
-  struct {
-    uint32_t R;
-    uint32_t G;
-    uint32_t B;
-  } rgb24;
+    struct {
+      uint8_t R;
+      uint8_t G;
+      uint8_t B;
+    } rgb8;
 
+    struct {
+      uint16_t R;
+      uint16_t G;
+      uint16_t B;
+    } rgb16;
+
+    struct {
+      uint32_t R;
+      uint32_t G;
+      uint32_t B;
+    } rgb24;
+  };
 } RGB;
 
 typedef struct {
@@ -43,30 +52,62 @@ typedef struct {
 } HSV;
 
 struct Converter {
-  XYZ rgb_to_xyz(RGB rgb) {
-    XYZ xyz;
-
-    float r = rgb.rgb16.R / 255.0f;
-    float g = rgb.rgb16.G / 255.0f;
-    float b = rgb.rgb16.B / 255.0f;
-
-    // To handle the SRGB Alpha channel correction
-    // that is one long weird word, but it is necessary
+  void linear_rgb(float &r, float &g, float &b) {
     if (r < 0.04045) {
-      r = r / 12.92;
+      r = r / 12.92f;
     } else {
       r = pow((r + 0.055) / 1.055, 2.4);
     }
     if (g < 0.04045) {
-      g = g / 12.92;
+      g = g / 12.92f;
     } else {
       g = pow((g + 0.055) / 1.055, 2.4);
     }
     if (b < 0.04045) {
-      b = b / 12.92;
+      b = b / 12.92f;
     } else {
       b = pow((b + 0.055) / 1.055, 2.4);
     }
+  }
+
+  void normalize_rgb(RGB &rgb, float &r, float &g, float &b) {
+    switch (rgb.type) {
+    case RGB8:
+      r = rgb.rgb8.R / 255.0f;
+      g = rgb.rgb8.G / 255.0f;
+      b = rgb.rgb8.B / 255.0f;
+      break;
+    case RGB16:
+      r = rgb.rgb16.R / 65535.0f;
+      g = rgb.rgb16.G / 65535.0f;
+      b = rgb.rgb16.B / 65535.0f;
+      break;
+    case RGB32:
+      break;
+    }
+  }
+
+  std::string rgb_hex(RGB rgb) {
+    int r, g, b;
+    r = static_cast<int>(rgb.rgb8.R);
+    g = static_cast<int>(rgb.rgb8.G);
+    b = static_cast<int>(rgb.rgb8.B);
+
+    std::stringstream ss;
+
+    ss << std::setfill('0') << std::setw(2) << std::hex << r;
+    ss << std::setfill('0') << std::setw(2) << std::hex << g;
+    ss << std::setfill('0') << std::setw(2) << std::hex << b;
+
+    return ss.str();
+  }
+
+  XYZ rgb_to_xyz(RGB rgb) {
+    XYZ xyz;
+    float r, g, b;
+
+    normalize_rgb(rgb, r, g, b);
+    linear_rgb(r, g, b);
 
     xyz.X = (0.4124564f * r) + (0.3575761f * g) + (0.1804375f * b);
     xyz.Y = (0.2126729f * r) + (0.7151522f * g) + (0.0721750f * b);
@@ -103,18 +144,30 @@ struct Converter {
     g = std::max(0.0f, std::min(1.0f, g));
     b = std::max(0.0f, std::min(1.0f, b));
 
-    rgb.rgb16.R = static_cast<int>(r * 255);
-    rgb.rgb16.G = static_cast<int>(g * 255);
-    rgb.rgb16.B = static_cast<int>(b * 255);
+    // TODO: Actually redirect to the right rgb
+    // Just defaults to rgb8 for now
+    switch (rgb.type) {
+    case RGB16:
+      rgb.rgb16.R = static_cast<int>(r * 65535);
+      rgb.rgb16.G = static_cast<int>(g * 65535);
+      rgb.rgb16.B = static_cast<int>(b * 65535);
+    case RGB32:
+      break;
+    default:
+      rgb.rgb8.R = static_cast<int>(r * 255);
+      rgb.rgb8.G = static_cast<int>(g * 255);
+      rgb.rgb8.B = static_cast<int>(b * 255);
+    }
 
     return rgb;
   }
 
   HSV rgb_to_hsv(RGB rgb) {
     HSV hsv;
-    float r = rgb.rgb16.R / 255.0;
-    float g = rgb.rgb16.B / 255.0;
-    float b = rgb.rgb16.G / 255.0;
+    float r, g, b;
+
+    normalize_rgb(rgb, r, g, b);
+    linear_rgb(r, g, b);
 
     float cmax = std::max(std::max(r, g), b);
     float cmin = std::min(std::min(r, g), b);
@@ -194,9 +247,21 @@ struct Converter {
       }
     }
 
-    rgb.rgb16.R = static_cast<int>(r * 255);
-    rgb.rgb16.G = static_cast<int>(g * 255);
-    rgb.rgb16.B = static_cast<int>(b * 255);
+    // TODO: Actually redirect to the right rgb
+    // Just defaults to rgb8 for now
+    //
+    switch (rgb.type) {
+    case RGB16:
+      rgb.rgb16.R = static_cast<int>(r * 65535);
+      rgb.rgb16.G = static_cast<int>(g * 65535);
+      rgb.rgb16.B = static_cast<int>(b * 65535);
+    case RGB32:
+      break;
+    default:
+      rgb.rgb8.R = static_cast<int>(r * 255);
+      rgb.rgb8.G = static_cast<int>(g * 255);
+      rgb.rgb8.B = static_cast<int>(b * 255);
+    }
 
     return rgb;
   }
@@ -241,9 +306,7 @@ void convert_color_space(Colorspace srcSpace, srcType &src,
       if constexpr (std::is_same_v<destType, RGB> &&
                     std::is_same_v<srcType, XYZ>) {
         rgb = conv.xyz_to_rgb(src);
-        dest.rgb16.R = rgb.rgb16.R;
-        dest.rgb16.G = rgb.rgb16.G;
-        dest.rgb16.B = rgb.rgb16.B;
+        dest = rgb;
       }
       break;
     case HSV_SPACE:
@@ -266,9 +329,10 @@ void convert_color_space(Colorspace srcSpace, srcType &src,
       if constexpr (std::is_same_v<destType, RGB> &&
                     std::is_same_v<srcType, HSV>) {
         rgb = conv.hsv_rgb(src);
-        dest.rgb16.R = rgb.rgb16.R;
-        dest.rgb16.G = rgb.rgb16.G;
-        dest.rgb16.B = rgb.rgb16.B;
+        // dest.rgb16.R = rgb.rgb16.R;
+        // dest.rgb16.G = rgb.rgb16.G;
+        // dest.rgb16.B = rgb.rgb16.B;
+        dest = rgb;
       }
       break;
     case HSV_SPACE:
