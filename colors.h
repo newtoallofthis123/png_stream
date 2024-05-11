@@ -31,39 +31,39 @@ typedef struct {
 } RGB24;
 
 typedef struct {
-  float H;
-  float S;
-  float V;
+  double H;
+  double S;
+  double V;
 } HSV8;
 
 typedef struct {
-  float H;
-  float S;
-  float V;
+  double H;
+  double S;
+  double V;
 } HSV16;
 
 typedef struct {
-  float H;
-  float S;
-  float V;
+  double H;
+  double S;
+  double V;
 } HSV24;
 
 typedef struct {
-  float X;
-  float Y;
-  float Z;
+  double X;
+  double Y;
+  double Z;
 } XYZ8;
 
 typedef struct {
-  float X;
-  float Y;
-  float Z;
+  double X;
+  double Y;
+  double Z;
 } XYZ16;
 
 typedef struct {
-  float X;
-  float Y;
-  float Z;
+  double X;
+  double Y;
+  double Z;
 } XYZ24;
 
 union Colorspace8 {
@@ -84,24 +84,25 @@ union Colorspace24 {
   XYZ24 xyz;
 };
 
-struct Converter8 {
-  void linear_rgb(float &r, float &g, float &b) {
-    if (r < 0.04045) {
-      r = r / 12.92f;
-    } else {
-      r = pow((r + 0.055) / 1.055, 2.4);
-    }
-    if (g < 0.04045) {
-      g = g / 12.92f;
-    } else {
-      g = pow((g + 0.055) / 1.055, 2.4);
-    }
-    if (b < 0.04045) {
-      b = b / 12.92f;
-    } else {
-      b = pow((b + 0.055) / 1.055, 2.4);
-    }
+inline void linear_rgb(float &r, float &g, float &b) {
+  if (r < 0.04045) {
+    r = r / 12.92f;
+  } else {
+    r = pow((r + 0.055) / 1.055, 2.4);
   }
+  if (g < 0.04045) {
+    g = g / 12.92f;
+  } else {
+    g = pow((g + 0.055) / 1.055, 2.4);
+  }
+  if (b < 0.04045) {
+    b = b / 12.92f;
+  } else {
+    b = pow((b + 0.055) / 1.055, 2.4);
+  }
+};
+
+struct Converter8 {
 
   std::string rgb_hex(RGB8 rgb) {
     int r, g, b;
@@ -210,30 +211,25 @@ struct Converter8 {
       auto q = v * (1 - s * f);
       auto t = v * (1 - s * (1 - f));
 
-      if (i == 0) {
-        r = v;
-        g = t;
-        b = p;
-      } else if (i == 1) {
-        r = q;
-        g = v;
-        b = p;
-      } else if (i == 2) {
-        r = p;
-        g = v;
-        b = t;
-      } else if (i == 3) {
-        r = p;
-        g = q;
-        b = v;
-      } else if (i == 4) {
-        r = t;
-        g = p;
-        b = v;
-      } else {
-        r = v;
-        g = p;
-        b = q;
+      switch (int(i)) {
+      case 0:
+        r = v, g = t, b = p;
+        break;
+      case 1:
+        r = q, g = v, b = p;
+        break;
+      case 2:
+        r = p, g = v, b = t;
+        break;
+      case 3:
+        r = p, g = q, b = v;
+        break;
+      case 4:
+        r = t, g = p, b = v;
+        break;
+      case 5:
+        r = v, g = p, b = q;
+        break;
       }
     }
 
@@ -287,6 +283,181 @@ inline Colorspace8 convert_color_space(ColorspaceType srcSpace,
     case HSV_SPACE:
       rgb = conv.xyz_rgb(src.xyz);
       dest.hsv = conv.rgb_hsv(rgb);
+    case XYZ_SPACE:
+      dest.xyz = src.xyz;
+      break;
+    }
+    break;
+  }
+  return dest;
+};
+
+struct Converter16 {
+  XYZ16 rgb_to_xyz(RGB16 rgb) {
+    XYZ16 xyz;
+
+    float r = rgb.R / 65535.0f;
+    float g = rgb.G / 65535.0f;
+    float b = rgb.B / 65535.0f;
+
+    linear_rgb(r, g, b);
+
+    xyz.X = (0.4124564f * r) + (0.3575761f * g) + (0.1804375f * b);
+    xyz.Y = (0.2126729f * r) + (0.7151522f * g) + (0.0721750f * b);
+    xyz.Z = (0.0193339f * r) + (0.1191920f * g) + (0.9503041f * b);
+
+    return xyz;
+  }
+
+  RGB16 xyz_to_rgb(XYZ16 xyz) {
+    RGB16 rgb;
+    float r = (xyz.X * 3.2404542) - (xyz.Y * 1.5371385) - (xyz.Z * 0.4985314);
+    float g = (xyz.X * -0.9692660) + (xyz.Y * 1.8760108) + (xyz.Z * 0.0415560);
+    float b = (xyz.X * 0.0556434) - (xyz.Y * 0.2040259) + (xyz.Z * 1.0572252);
+
+    linear_rgb(r, g, b);
+
+    r = std::max(0.0f, std::min(1.0f, r));
+    g = std::max(0.0f, std::min(1.0f, g));
+    b = std::max(0.0f, std::min(1.0f, b));
+
+    rgb.R = static_cast<int>(r * 65535);
+    rgb.G = static_cast<int>(g * 65535);
+    rgb.B = static_cast<int>(b * 65535);
+
+    return rgb;
+  }
+
+  // FIXME: Fix the value field
+  HSV16 rgb_to_hsv(RGB16 rgb) {
+    HSV16 hsv;
+    float r = rgb.R / 65535.0f;
+    float g = rgb.G / 65535.0f;
+    float b = rgb.B / 65535.0f;
+
+    float cmax = std::max(std::max(r, g), b);
+    float cmin = std::min(std::min(r, g), b);
+    float delta = cmax - cmin;
+
+    if (delta == 0) {
+      hsv.H = 0;
+    } else if (cmax == r) {
+      if (g > b)
+        hsv.H = 60.0f * (std::fmod(((g - b) / delta), 6.0f));
+      else
+        hsv.H = 60.0f * (std::fmod(((b - g) / delta), 6.0f));
+    } else if (cmax == g) {
+      hsv.H = 60.0f * (((b - r) / delta) + 2);
+    } else {
+      hsv.H = 60.0f * (((r - g) / delta) + 4);
+    }
+
+    if (cmax == 0) {
+      hsv.S = 0;
+    } else {
+      hsv.S = (delta / cmax) * 100;
+    }
+
+    hsv.V = cmax * 100;
+
+    return hsv;
+  }
+
+  RGB16 hsv_to_rgb(HSV16 hsv) {
+    RGB16 rgb;
+
+    float h, s, v, r, g, b;
+
+    h = hsv.H;
+    s = hsv.S;
+    v = hsv.V;
+
+    h /= 360.0f;
+    s /= 100.0f;
+    v /= 100.0f;
+
+    if (s == 0) {
+      r = g = b = v;
+    } else {
+      h *= 6;
+      auto i = std::floor(h);
+      float f = h - i;
+      auto p = v * (1 - s);
+      auto q = v * (1 - s * f);
+      auto t = v * (1 - s * (1 - f));
+
+      switch (int(i)) {
+      case 0:
+        r = v, g = t, b = p;
+        break;
+      case 1:
+        r = q, g = v, b = p;
+        break;
+      case 2:
+        r = p, g = v, b = t;
+        break;
+      case 3:
+        r = p, g = q, b = v;
+        break;
+      case 4:
+        r = t, g = p, b = v;
+        break;
+      case 5:
+        r = v, g = p, b = q;
+        break;
+      }
+    }
+
+    rgb.R = static_cast<int>(r * 65535);
+    rgb.G = static_cast<int>(g * 65535);
+    rgb.B = static_cast<int>(b * 65535);
+
+    return rgb;
+  }
+};
+
+inline Colorspace16 convert_color_space(ColorspaceType srcSpace,
+                                        ColorspaceType destSpace,
+                                        Colorspace16 &src) {
+  Converter16 conv;
+  Colorspace16 dest;
+  RGB16 rgb;
+  HSV16 hsv;
+  XYZ16 xyz;
+  switch (srcSpace) {
+  case RGB_SPACE:
+    switch (destSpace) {
+    case XYZ_SPACE:
+      dest.xyz = conv.rgb_to_xyz(src.rgb);
+    case RGB_SPACE:
+      dest.rgb = src.rgb;
+      break;
+    case HSV_SPACE:
+      dest.hsv = conv.rgb_to_hsv(src.rgb);
+      break;
+    }
+    break;
+  case HSV_SPACE:
+    switch (destSpace) {
+    case RGB_SPACE:
+      dest.rgb = conv.hsv_to_rgb(src.hsv);
+      break;
+    case HSV_SPACE:
+      dest.hsv = src.hsv;
+      break;
+    case XYZ_SPACE:
+      rgb = conv.hsv_to_rgb(src.hsv);
+      dest.xyz = conv.rgb_to_xyz(rgb);
+      break;
+    }
+    break;
+  case XYZ_SPACE:
+    switch (destSpace) {
+    case RGB_SPACE:
+      dest.rgb = conv.xyz_to_rgb(src.xyz);
+    case HSV_SPACE:
+      rgb = conv.xyz_to_rgb(src.xyz);
+      dest.hsv = conv.rgb_to_hsv(rgb);
     case XYZ_SPACE:
       dest.xyz = src.xyz;
       break;
