@@ -484,16 +484,18 @@ inline Colorspace16 convert_color_space(ColorspaceType srcSpace,
   return dest;
 };
 
+// A Small debug struct, just so that I don't have to repeat the print
+// statements
 struct Debug {
-  static void print_hsv(HSV8 &hsv) {
+  template <typename HSV> static void print_hsv(HSV &hsv) {
     std::cout << "HSV: (" << hsv.H << ", " << hsv.S << "%, " << hsv.V << "%)";
   }
 
-  static void print_rgb(RGB8 &rgb) {
+  template <typename RGB> static void print_rgb(RGB &rgb) {
     std::cout << "RGB: (" << +rgb.R << ", " << +rgb.G << ", " << +rgb.B << ")";
   }
 
-  static void print_xyz(XYZ8 &xyz) {
+  template <typename XYZ> static void print_xyz(XYZ &xyz) {
     std::cout << "XYZ: (" << xyz.X << ", " << xyz.Y << ", " << xyz.Z << ")";
   }
 };
