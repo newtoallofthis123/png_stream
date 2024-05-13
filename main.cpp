@@ -1,14 +1,15 @@
 #include "colors.h"
-#include <iostream>
-#include <ostream>
+using namespace APPROACH_RENDER_PNG;
 
 int main() {
-  APPROACH_RENDER_PNG::Colorspace8 c8;
+  Colorspace8 c8;
+
   c8.rgb = {25, 23, 36};
 
-  auto res =
-      convert_color_space(APPROACH_RENDER_PNG::ColorspaceType::RGB_SPACE,
-                          APPROACH_RENDER_PNG::ColorspaceType::HSV_SPACE, c8);
-  std::cout << res.hsv.H << " " << res.hsv.S << " " << res.hsv.V << " "
-            << std::endl;
+  auto res = convert_color_space(ColorspaceType::RGB_SPACE,
+                                 ColorspaceType::HSV_SPACE, c8);
+
+  std::cout << "Info for: " << Converter8::rgb_hex(c8.rgb) << std::endl;
+  Debug::print_rgb(c8.rgb);
+  Debug::print_hsv(res.hsv);
 }
