@@ -159,8 +159,8 @@ struct Converter8 {
   HSV8 rgb_hsv(RGB8 rgb) {
     HSV8 hsv;
     float r = rgb.R / 255.0;
-    float g = rgb.B / 255.0;
-    float b = rgb.G / 255.0;
+    float g = rgb.G / 255.0;
+    float b = rgb.B / 255.0;
 
     float cmax = std::max(std::max(r, g), b);
     float cmin = std::min(std::min(r, g), b);
